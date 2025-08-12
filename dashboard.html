@@ -16,6 +16,8 @@
             --warning: #f8961e;
             --dark: #212529;
             --light: #f8f9fa;
+            --moisture: #3a0ca3;
+            --moisture2: #7209b7;
         }
         
         * {
@@ -113,7 +115,7 @@
         .humidity-icon { background-color: var(--success); }
         .light-icon { background-color: var(--warning); }
         .motion-icon { background-color: var(--primary); }
-        .moisture-icon { background-color: var(--accent); }
+        .moisture-icon { background-color: var(--moisture); }
         
         .card-value {
             font-size: 2rem;
@@ -247,6 +249,83 @@
             background-color: #f5f5f5;
         }
         
+        /* Voice control styles */
+        .voice-control {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .voice-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s;
+        }
+        
+        .voice-btn:hover {
+            background-color: var(--secondary);
+            transform: scale(1.05);
+        }
+        
+        .voice-btn.listening {
+            background-color: var(--danger);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .voice-feedback {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            background-color: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: none;
+            max-width: 300px;
+            text-align: center;
+        }
+        
+        .voice-feedback.active {
+            display: block;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(247, 37, 133, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 15px rgba(247, 37, 133, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(247, 37, 133, 0);
+            }
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            background-color: var(--primary);
+            color: white;
+            cursor: pointer;
+            margin: 0 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: var(--secondary);
+        }
+        
         @media (max-width: 768px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
@@ -254,6 +333,11 @@
             
             .control-section {
                 grid-template-columns: 1fr;
+            }
+            
+            .voice-btn {
+                width: 50px;
+                height: 50px;
             }
         }
     </style>
@@ -312,7 +396,7 @@
                     </div>
                 </div>
                 <div class="card-value" id="light">--</div>
-                <div class="card-unit">Light Level</div>
+                <div class="card-unit">lux</div>
                 <div class="card-footer">
                     <span>Living Room</span>
                     <span class="status-badge status-active">Live</span>
@@ -380,6 +464,7 @@
                     </label>
                 </div>
                 <p>Control the LED light in the living room</p>
+                <p class="voice-command-hint"><small>Voice command: "Turn on light" or "Turn off light"</small></p>
             </div>
             
             <!-- Fan Control -->
@@ -392,6 +477,7 @@
                     </label>
                 </div>
                 <p>Control the cooling fan</p>
+                <p class="voice-command-hint"><small>Voice command: "Turn on fan" or "Turn off fan"</small></p>
             </div>
             
             <!-- Pump 1 Control -->
@@ -404,6 +490,7 @@
                     </label>
                 </div>
                 <p>Control water pump for Plant 1</p>
+                <p class="voice-command-hint"><small>Voice command: "Turn on plant one pump" or "Turn off plant one pump"</small></p>
             </div>
             
             <!-- Pump 2 Control -->
@@ -416,6 +503,7 @@
                     </label>
                 </div>
                 <p>Control water pump for Plant 2</p>
+                <p class="voice-command-hint"><small>Voice command: "Turn on plant two pump" or "Turn off plant two pump"</small></p>
             </div>
             
             <!-- Garage Door Control -->
@@ -428,6 +516,7 @@
                     </div>
                 </div>
                 <p>Current angle: <span id="garageAngle">0</span>°</p>
+                <p class="voice-command-hint"><small>Voice command: "Open garage door" or "Close garage door"</small></p>
             </div>
         </div>
         
@@ -445,6 +534,8 @@
                         <th>Temperature</th>
                         <th>Humidity</th>
                         <th>Light</th>
+                        <th>Moisture 1</th>
+                        <th>Moisture 2</th>
                         <th>Motion</th>
                     </tr>
                 </thead>
@@ -455,6 +546,14 @@
         </div>
     </div>
 
+    <!-- Voice control button -->
+    <div class="voice-control">
+        <div class="voice-feedback" id="voiceFeedback"></div>
+        <button class="voice-btn" id="voiceBtn" title="Voice Control">
+            <i class="fas fa-microphone"></i>
+        </button>
+    </div>
+
     <!-- Firebase and Chart.js -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -463,7 +562,7 @@
     <script>
         // Firebase configuration
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
+            apiKey: "AIzaSyDRhGlqmt623e7G-Hkvz3u2cwmRorGM94U",
             authDomain: "smart-iot-93a77.firebaseapp.com",
             databaseURL: "https://smart-iot-93a77-default-rtdb.firebaseio.com",
             projectId: "smart-iot-93a77",
@@ -495,6 +594,10 @@
         const garageOpenBtn = document.getElementById('garageOpen');
         const garageCloseBtn = document.getElementById('garageClose');
         
+        // Voice control elements
+        const voiceBtn = document.getElementById('voiceBtn');
+        const voiceFeedback = document.getElementById('voiceFeedback');
+        
         // Chart setup
         const ctx = document.getElementById('sensorChart').getContext('2d');
         const sensorChart = new Chart(ctx, {
@@ -507,34 +610,283 @@
                         data: [],
                         borderColor: 'rgba(247, 37, 133, 1)',
                         backgroundColor: 'rgba(247, 37, 133, 0.1)',
-                        tension: 0.1
+                        tension: 0.1,
+                        yAxisID: 'y'
                     },
                     {
                         label: 'Humidity (%)',
                         data: [],
                         borderColor: 'rgba(76, 201, 240, 1)',
                         backgroundColor: 'rgba(76, 201, 240, 0.1)',
-                        tension: 0.1
+                        tension: 0.1,
+                        yAxisID: 'y'
                     },
                     {
-                        label: 'Light (Lux)',
+                        label: 'Light (lux)',
                         data: [],
                         borderColor: 'rgba(248, 150, 30, 1)',
                         backgroundColor: 'rgba(248, 150, 30, 0.1)',
-                        tension: 0.1
+                        tension: 0.1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Plant 1 Moisture (%)',
+                        data: [],
+                        borderColor: 'rgba(58, 12, 163, 1)',
+                        backgroundColor: 'rgba(58, 12, 163, 0.1)',
+                        tension: 0.1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Plant 2 Moisture (%)',
+                        data: [],
+                        borderColor: 'rgba(114, 9, 183, 1)',
+                        backgroundColor: 'rgba(114, 9, 183, 0.1)',
+                        tension: 0.1,
+                        yAxisID: 'y'
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 scales: {
                     y: {
-                        beginAtZero: false
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Values'
+                        }
                     }
                 }
             }
         });
+        
+        // Initialize speech recognition and synthesis
+        function initVoiceControl() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const SpeechSynthesisUtterance = window.SpeechSynthesisUtterance || window.webkitSpeechSynthesisUtterance;
+            const speechSynthesis = window.speechSynthesis || window.webkitSpeechSynthesis;
+            
+            if (!SpeechRecognition || !SpeechSynthesisUtterance) {
+                voiceFeedback.textContent = "Speech features not supported in your browser";
+                voiceFeedback.classList.add('active');
+                setTimeout(() => {
+                    voiceFeedback.classList.remove('active');
+                }, 3000);
+                return null;
+            }
+            
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+            
+            return {
+                recognition,
+                SpeechSynthesisUtterance,
+                speechSynthesis
+            };
+        }
+        
+        const voiceControl = initVoiceControl();
+        const recognition = voiceControl?.recognition;
+        const SpeechSynthesisUtterance = voiceControl?.SpeechSynthesisUtterance;
+        const speechSynthesis = voiceControl?.speechSynthesis;
+        
+        // Convert moisture to percentage (assuming max moisture level is 100)
+        function convertMoistureToPercentage(value) {
+            if (value === null || value === undefined) return null;
+            const percentage = Math.round(value);
+            return Math.min(100, Math.max(0, percentage)); // Ensure between 0-100
+        }
+        
+        // Get system status as a text report
+        function getSystemStatus() {
+            const status = {
+                temperature: temperatureEl.textContent,
+                humidity: humidityEl.textContent,
+                light: lightEl.textContent,
+                motion: motionEl.textContent,
+                moisture1: moisture1El.textContent,
+                moisture2: moisture2El.textContent,
+                led: ledSwitch.checked ? 'on' : 'off',
+                fan: fanSwitch.checked ? 'on' : 'off',
+                pump1: pump1Switch.checked ? 'on' : 'off',
+                pump2: pump2Switch.checked ? 'on' : 'off',
+                garage: garageAngleEl.textContent > 45 ? 'open' : 'closed'
+            };
+            
+            return `System status: Temperature is ${status.temperature} degrees Celsius, ` +
+                   `Humidity is ${status.humidity} percent, ` +
+                   `Light level is ${status.light} lux, ` +
+                   `Motion is ${status.motion.toLowerCase()}, ` +
+                   `Plant 1 moisture is ${status.moisture1} percent, ` +
+                   `Plant 2 moisture is ${status.moisture2} percent. ` +
+                   `Devices: Light is ${status.led}, ` +
+                   `Fan is ${status.fan}, ` +
+                   `Plant 1 pump is ${status.pump1}, ` +
+                   `Plant 2 pump is ${status.pump2}, ` +
+                   `Garage door is ${status.garage}.`;
+        }
+        
+        // Speak the system status
+        function speakSystemStatus() {
+            if (!SpeechSynthesisUtterance || !speechSynthesis) {
+                voiceFeedback.textContent = "Speech synthesis not supported";
+                voiceFeedback.classList.add('active');
+                setTimeout(() => {
+                    voiceFeedback.classList.remove('active');
+                }, 3000);
+                return;
+            }
+            
+            const status = getSystemStatus();
+            const utterance = new SpeechSynthesisUtterance(status);
+            
+            // Show feedback that we're speaking
+            voiceFeedback.textContent = "Speaking system status...";
+            voiceFeedback.classList.add('active');
+            
+            utterance.onend = () => {
+                setTimeout(() => {
+                    voiceFeedback.classList.remove('active');
+                }, 1000);
+            };
+            
+            speechSynthesis.speak(utterance);
+        }
+        
+        // Handle voice commands
+        function handleVoiceCommand(command) {
+            command = command.toLowerCase().trim();
+            let actionTaken = false;
+            
+            // Show feedback
+            voiceFeedback.textContent = `Command: "${command}"`;
+            voiceFeedback.classList.add('active');
+            
+            // Process command
+            if (command.includes('light')) {
+                if (command.includes('on')) {
+                    database.ref('controls/led').set(true);
+                    voiceFeedback.textContent += " - Turning light on";
+                    actionTaken = true;
+                } else if (command.includes('off')) {
+                    database.ref('controls/led').set(false);
+                    voiceFeedback.textContent += " - Turning light off";
+                    actionTaken = true;
+                }
+            } 
+            else if (command.includes('fan')) {
+                if (command.includes('on')) {
+                    database.ref('controls/fan').set(true);
+                    voiceFeedback.textContent += " - Turning fan on";
+                    actionTaken = true;
+                } else if (command.includes('off')) {
+                    database.ref('controls/fan').set(false);
+                    voiceFeedback.textContent += " - Turning fan off";
+                    actionTaken = true;
+                }
+            }
+            else if (command.includes('plant one') || command.includes('plant 1')) {
+                if (command.includes('on')) {
+                    database.ref('controls/pump1').set(true);
+                    voiceFeedback.textContent += " - Turning plant one pump on";
+                    actionTaken = true;
+                } else if (command.includes('off')) {
+                    database.ref('controls/pump1').set(false);
+                    voiceFeedback.textContent += " - Turning plant one pump off";
+                    actionTaken = true;
+                }
+            }
+            else if (command.includes('plant two') || command.includes('plant 2')) {
+                if (command.includes('on')) {
+                    database.ref('controls/pump2').set(true);
+                    voiceFeedback.textContent += " - Turning plant two pump on";
+                    actionTaken = true;
+                } else if (command.includes('off')) {
+                    database.ref('controls/pump2').set(false);
+                    voiceFeedback.textContent += " - Turning plant two pump off";
+                    actionTaken = true;
+                }
+            }
+            else if (command.includes('garage')) {
+                if (command.includes('open')) {
+                    database.ref('controls/garage_door').set(90);
+                    voiceFeedback.textContent += " - Opening garage door";
+                    actionTaken = true;
+                } else if (command.includes('close')) {
+                    database.ref('controls/garage_door').set(0);
+                    voiceFeedback.textContent += " - Closing garage door";
+                    actionTaken = true;
+                }
+            }
+            else if (command.includes('system status') || command.includes('status')) {
+                speakSystemStatus();
+                actionTaken = true;
+                return; // Skip the feedback timeout as it's handled in speakSystemStatus
+            }
+            
+            if (!actionTaken) {
+                voiceFeedback.textContent += " - Command not recognized";
+            }
+            
+            // Hide feedback after 3 seconds for regular commands
+            setTimeout(() => {
+                voiceFeedback.classList.remove('active');
+            }, 3000);
+        }
+        
+        // Setup voice control button
+        function setupVoiceControl() {
+            if (!recognition) return;
+            
+            voiceBtn.addEventListener('click', () => {
+                if (voiceBtn.classList.contains('listening')) {
+                    recognition.stop();
+                    voiceBtn.classList.remove('listening');
+                    voiceFeedback.textContent = "Listening stopped";
+                    voiceFeedback.classList.add('active');
+                    setTimeout(() => {
+                        voiceFeedback.classList.remove('active');
+                    }, 2000);
+                } else {
+                    recognition.start();
+                    voiceBtn.classList.add('listening');
+                    voiceFeedback.textContent = "Listening... Speak now";
+                    voiceFeedback.classList.add('active');
+                }
+            });
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                handleVoiceCommand(transcript);
+                voiceBtn.classList.remove('listening');
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error', event.error);
+                voiceBtn.classList.remove('listening');
+                voiceFeedback.textContent = "Error: " + event.error;
+                voiceFeedback.classList.add('active');
+                setTimeout(() => {
+                    voiceFeedback.classList.remove('active');
+                }, 3000);
+            };
+            
+            recognition.onend = () => {
+                if (voiceBtn.classList.contains('listening')) {
+                    voiceBtn.classList.remove('listening');
+                }
+            };
+        }
         
         // Firebase data listeners
         function setupFirebaseListeners() {
@@ -545,13 +897,16 @@
                     const key = Object.keys(data)[0];
                     const reading = data[key];
                     
+                    // Convert moisture to percentage
+                    const moisture2Percentage = convertMoistureToPercentage(reading.moisture2);
+                    
                     // Update UI
                     temperatureEl.textContent = reading.temperature || '--';
                     humidityEl.textContent = reading.humidity || '--';
                     lightEl.textContent = reading.light || '--';
                     motionEl.textContent = reading.motion ? 'Detected' : 'None';
                     moisture1El.textContent = reading.moisture1 || '--';
-                    moisture2El.textContent = reading.moisture2 || '--';
+                    moisture2El.textContent = moisture2Percentage !== null ? moisture2Percentage : '--';
                     
                     // Update motion status
                     if (reading.motion) {
@@ -566,7 +921,11 @@
                     lastUpdatedEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
                     
                     // Add to chart
-                    addToChart(reading);
+                    const chartReading = {
+                        ...reading,
+                        moisture2: moisture2Percentage
+                    };
+                    addToChart(chartReading);
                     
                     // Add to table
                     addToTable(reading, key);
@@ -593,13 +952,15 @@
         // Add data to chart
         function addToChart(reading) {
             const now = new Date();
-            const timeLabel = `${now.getHours()}:${now.getMinutes()}`;
+            const timeLabel = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
             
             // Add new data point
             sensorChart.data.labels.push(timeLabel);
             sensorChart.data.datasets[0].data.push(reading.temperature);
             sensorChart.data.datasets[1].data.push(reading.humidity);
             sensorChart.data.datasets[2].data.push(reading.light);
+            sensorChart.data.datasets[3].data.push(reading.moisture1);
+            sensorChart.data.datasets[4].data.push(reading.moisture2);
             
             // Limit to 20 data points
             if (sensorChart.data.labels.length > 20) {
@@ -621,11 +982,16 @@
             const date = new Date(parseInt(timestamp));
             const timeString = date.toLocaleTimeString();
             
+            // Convert moisture to percentage for display
+            const moisture2Percentage = convertMoistureToPercentage(reading.moisture2);
+            
             row.innerHTML = `
                 <td>${timeString}</td>
                 <td>${reading.temperature || '--'}°C</td>
                 <td>${reading.humidity || '--'}%</td>
-                <td>${reading.light || '--'} Lux</td>
+                <td>${reading.light || '--'} lux</td>
+                <td>${reading.moisture1 || '--'}%</td>
+                <td>${moisture2Percentage !== null ? moisture2Percentage : '--'}%</td>
                 <td>${reading.motion ? 'Detected' : 'None'}</td>
             `;
             
@@ -667,6 +1033,7 @@
         // Initialize
         setupFirebaseListeners();
         setupControlListeners();
+        setupVoiceControl();
     </script>
 </body>
-</html>
+</html
